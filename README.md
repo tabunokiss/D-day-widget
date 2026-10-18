@@ -29,8 +29,22 @@ https://tabunokiss.github.io/D-day-widget/dday?content=마무리%20잘하기&dat
 https://tabunokiss.github.io/D-day-widget/dday?content=BIRTHDAY%F0%9F%8E%82&date=20270507&text=C8C8C8
 ```
 
-## 노션에 두 개를 나란히 넣기
+## 위젯 여러 개를 한 줄에 넣기 (최대 4개)
 
-1. 노션에서 `/임베드`로 첫 번째 주소를 넣습니다.
-2. 두 번째 임베드를 넣고, 블록 왼쪽 손잡이(⋮⋮)를 끌어 첫 번째 임베드 **오른쪽**에 놓으면 같은 줄 2단이 됩니다.
-3. 임베드 모서리를 끌어 크기를 맞춥니다. 글자 크기는 위젯 크기에 맞춰 자동으로 바뀝니다.
+노션은 한 열 안에 다시 열을 만들 수 없어서, 임베드를 따로 넣으면 같은 줄에 놓을 수 없습니다.
+대신 **임베드 하나**에 위젯을 여러 개 넣으면 됩니다. 두 번째부터는 데이터 키 뒤에 번호를 붙입니다.
+
+| 위젯 | 데이터 키 |
+|---|---|
+| 1번째 | `date`, `content`, `text`, `background` |
+| 2번째 | `date2`, `content2`, `text2`, `background2` |
+| 3번째 | `date3`, `content3`, `text3`, `background3` |
+| 4번째 | `date4`, `content4`, `text4`, `background4` |
+
+```
+https://tabunokiss.github.io/D-day-widget/dday/?content=AI%20콘텐츠%20페스티벌&date=20261112&background=D9FF4F&content2=입사&date2=20240902&background2=D8B4FE
+```
+
+- 위젯이 2개 이상이면 자동으로 **정사각형**이 되고, 칸 크기에 맞춰 줄어듭니다.
+- 위젯 사이 빈 곳은 투명해서 노션 배경이 그대로 보입니다.
+- 위젯이 하나일 때도 `&square=1`을 붙이면 정사각형이 됩니다.

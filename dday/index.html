@@ -10,109 +10,142 @@
     :root { --bg: #191919; --fg: #ffffff; }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
   body {
-    background: var(--bg);
-    color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
-    overflow: hidden;
   }
-  .widget {
+  /* 위젯 줄: 임베드 칸 안에 위젯을 가로로 나란히 놓아요. */
+  .row {
     width: 100%;
     height: 100%;
+    display: flex;
+    gap: var(--gap, 4%);
+    align-items: flex-start;
+  }
+  .card {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--fg);
     container-type: size;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: max(8px, 6cqmin);
+    padding: max(6px, 7cqmin);
   }
+  /* 정사각형 모드: 칸 높이와 너비 중 작은 쪽에 맞춰 정사각형으로 그려요. */
+  .row.square .card {
+    flex: 0 1 auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    width: min(100cqh, (100cqw - (var(--n) - 1) * var(--gapPx)) / var(--n));
+  }
+  .row.square { container-type: size; }
   .content {
     font-weight: 800;
-    font-size: clamp(12px, 11cqmin, 40px);
+    font-size: clamp(9px, 12cqmin, 40px);
     line-height: 1.2;
     word-break: keep-all;
     overflow-wrap: anywhere;
   }
   .date {
-    margin-top: 0.3em;
+    margin-top: 0.25em;
     font-weight: 700;
-    font-size: clamp(10px, 7cqmin, 24px);
+    font-size: clamp(8px, 8cqmin, 24px);
     opacity: 0.85;
   }
   .count {
     align-self: flex-end;
     font-weight: 900;
-    font-size: clamp(20px, 24cqmin, 120px);
+    font-size: clamp(14px, 25cqmin, 120px);
     line-height: 1;
     letter-spacing: -0.02em;
     white-space: nowrap;
   }
-  .error .count { font-size: clamp(12px, 8cqmin, 28px); }
+  .card.error .count { font-size: clamp(9px, 8cqmin, 28px); white-space: normal; }
 </style>
 </head>
 <body>
-<div class="widget" id="w">
-  <div>
-    <div class="content" id="content"></div>
-    <div class="date" id="date"></div>
-  </div>
-  <div class="count" id="count"></div>
-</div>
+<div class="row" id="row"></div>
 <script>
 (function () {
   var params = new URLSearchParams(location.search);
-  var root = document.documentElement;
-  var w = document.getElementById('w');
+  var row = document.getElementById('row');
 
-  // 색상: HEX 값(# 생략 가능, 3자리/6자리)만 받아요.
   function hex(v) {
     if (!v) return null;
     v = v.trim().replace(/^#/, '');
     return /^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? '#' + v : null;
   }
-  var bg = hex(params.get('background'));
-  var fg = hex(params.get('text'));
-  if (bg) root.style.setProperty('--bg', bg);
-  if (fg) root.style.setProperty('--fg', fg);
-  // 배경색만 지정했을 때는 배경 밝기에 맞춰 검은/흰 글자를 자동으로 골라요.
-  if (bg && !fg) {
+  function autoText(bg) {
     var h = bg.slice(1);
     if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
     var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
-    var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    root.style.setProperty('--fg', lum > 0.55 ? '#000000' : '#ffffff');
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#000000' : '#ffffff';
   }
 
-  // 내용
-  var content = params.get('content');
-  document.getElementById('content').textContent = content || '';
+  // 위젯 1~4개: date / date2 / date3 / date4 (content, text, background도 같은 번호)
+  var cards = [];
+  ['', '2', '3', '4'].forEach(function (s, i) {
+    if (i > 0 && !params.has('date' + s) && !params.has('content' + s)) return;
+    cards.push({
+      date: params.get('date' + s),
+      content: params.get('content' + s),
+      text: hex(params.get('text' + s)),
+      background: hex(params.get('background' + s))
+    });
+  });
 
-  // 날짜: YYYYMMDD
-  var raw = (params.get('date') || '').replace(/[^0-9]/g, '');
-  var countEl = document.getElementById('count');
-  if (raw.length !== 8) {
-    w.classList.add('error');
-    countEl.textContent = 'date=YYYYMMDD 를 넣어주세요';
-    return;
-  }
-  var y = +raw.slice(0, 4), m = +raw.slice(4, 6), d = +raw.slice(6, 8);
-  var target = new Date(y, m - 1, d);
-  if (target.getFullYear() !== y || target.getMonth() !== m - 1 || target.getDate() !== d) {
-    w.classList.add('error');
-    countEl.textContent = '날짜를 확인해주세요';
-    return;
-  }
-  document.getElementById('date').textContent = y + '-' + m + '-' + d;
+  var n = cards.length;
+  // 두 개 이상이면 정사각형, 하나일 때는 square=1 을 넣으면 정사각형
+  var sq = params.get('square');
+  var square = sq !== null ? !/^(0|false|no)$/i.test(sq) : n > 1;
+  if (square) row.classList.add('square');
+  var gapPx = Math.max(8, Math.min(16, Math.round(window.innerWidth * 0.03)));
+  row.style.setProperty('--n', n);
+  row.style.setProperty('--gapPx', gapPx + 'px');
+  row.style.setProperty('--gap', gapPx + 'px');
+
+  var targets = [];
+  cards.forEach(function (c) {
+    var card = document.createElement('div');
+    card.className = 'card';
+    if (c.background) card.style.setProperty('--bg', c.background);
+    if (c.text) card.style.setProperty('--fg', c.text);
+    else if (c.background) card.style.setProperty('--fg', autoText(c.background));
+    card.innerHTML = '<div><div class="content"></div><div class="date"></div></div><div class="count"></div>';
+    card.querySelector('.content').textContent = c.content || '';
+    var countEl = card.querySelector('.count');
+    row.appendChild(card);
+
+    var raw = (c.date || '').replace(/[^0-9]/g, '');
+    if (raw.length !== 8) {
+      card.classList.add('error');
+      countEl.textContent = 'date=YYYYMMDD 를 넣어주세요';
+      return;
+    }
+    var y = +raw.slice(0, 4), m = +raw.slice(4, 6), d = +raw.slice(6, 8);
+    var t = new Date(y, m - 1, d);
+    if (t.getFullYear() !== y || t.getMonth() !== m - 1 || t.getDate() !== d) {
+      card.classList.add('error');
+      countEl.textContent = '날짜를 확인해주세요';
+      return;
+    }
+    card.querySelector('.date').textContent = y + '-' + m + '-' + d;
+    targets.push({ t: t, el: countEl });
+  });
 
   // 접속할 때마다 오늘(보는 사람의 현지 날짜) 기준으로 다시 계산해요.
   function render() {
     var now = new Date();
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var diff = Math.round((target - today) / 86400000);
-    countEl.textContent = diff > 0 ? 'D-' + diff : diff === 0 ? 'D-DAY' : 'D+' + (-diff);
+    targets.forEach(function (x) {
+      var diff = Math.round((x.t - today) / 86400000);
+      x.el.textContent = diff > 0 ? 'D-' + diff : diff === 0 ? 'D-DAY' : 'D+' + (-diff);
+    });
   }
   render();
-  // 페이지를 켜둔 채 자정을 넘겨도 바뀌도록 1분마다 확인해요.
   setInterval(render, 60000);
 })();
 </script>
