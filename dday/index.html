@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D-day Widget</title>
+<style>
+  :root { --bg: #ffffff; --fg: #000000; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #191919; --fg: #ffffff; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    overflow: hidden;
+  }
+  .widget {
+    width: 100%;
+    height: 100%;
+    container-type: size;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: max(8px, 6cqmin);
+  }
+  .content {
+    font-weight: 800;
+    font-size: clamp(12px, 11cqmin, 40px);
+    line-height: 1.2;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  .date {
+    margin-top: 0.3em;
+    font-weight: 700;
+    font-size: clamp(10px, 7cqmin, 24px);
+    opacity: 0.85;
+  }
+  .count {
+    align-self: flex-end;
+    font-weight: 900;
+    font-size: clamp(20px, 24cqmin, 120px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .error .count { font-size: clamp(12px, 8cqmin, 28px); }
+</style>
+</head>
+<body>
+<div class="widget" id="w">
+  <div>
+    <div class="content" id="content"></div>
+    <div class="date" id="date"></div>
+  </div>
+  <div class="count" id="count"></div>
+</div>
+<script>
+(function () {
+  var params = new URLSearchParams(location.search);
+  var root = document.documentElement;
+  var w = document.getElementById('w');
+
+  // 색상: HEX 값(# 생략 가능, 3자리/6자리)만 받아요.
+  function hex(v) {
+    if (!v) return null;
+    v = v.trim().replace(/^#/, '');
+    return /^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? '#' + v : null;
+  }
+  var bg = hex(params.get('background'));
+  var fg = hex(params.get('text'));
+  if (bg) root.style.setProperty('--bg', bg);
+  if (fg) root.style.setProperty('--fg', fg);
+  // 배경색만 지정했을 때는 배경 밝기에 맞춰 검은/흰 글자를 자동으로 골라요.
+  if (bg && !fg) {
+    var h = bg.slice(1);
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    root.style.setProperty('--fg', lum > 0.55 ? '#000000' : '#ffffff');
+  }
+
+  // 내용
+  var content = params.get('content');
+  document.getElementById('content').textContent = content || '';
+
+  // 날짜: YYYYMMDD
+  var raw = (params.get('date') || '').replace(/[^0-9]/g, '');
+  var countEl = document.getElementById('count');
+  if (raw.length !== 8) {
+    w.classList.add('error');
+    countEl.textContent = 'date=YYYYMMDD 를 넣어주세요';
+    return;
+  }
+  var y = +raw.slice(0, 4), m = +raw.slice(4, 6), d = +raw.slice(6, 8);
+  var target = new Date(y, m - 1, d);
+  if (target.getFullYear() !== y || target.getMonth() !== m - 1 || target.getDate() !== d) {
+    w.classList.add('error');
+    countEl.textContent = '날짜를 확인해주세요';
+    return;
+  }
+  document.getElementById('date').textContent = y + '-' + m + '-' + d;
+
+  // 접속할 때마다 오늘(보는 사람의 현지 날짜) 기준으로 다시 계산해요.
+  function render() {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var diff = Math.round((target - today) / 86400000);
+    countEl.textContent = diff > 0 ? 'D-' + diff : diff === 0 ? 'D-DAY' : 'D+' + (-diff);
+  }
+  render();
+  // 페이지를 켜둔 채 자정을 넘겨도 바뀌도록 1분마다 확인해요.
+  setInterval(render, 60000);
+})();
+</script>
+</body>
+</html>
